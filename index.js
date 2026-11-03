@@ -45,16 +45,36 @@ app.post("/studios", async (req, res) => {
 
 app.post("/bookings", async (req, res) => {
   try {
-    const data = req.body;
-    const senddata = await bookingsData.insertOne(data);
+    const { title, bookingData, userData } = req.body;
+    const { bookingDate, startTime, endTime } = bookingData;
+
+    // 1. Check for overlapping time slots for the same item/title on the same date
+    const overlappingBooking = await bookingsData.findOne({
+      title: title,
+      "bookingData.bookingDate": bookingDate,
+      "bookingData.startTime": { $lt: endTime },
+      "bookingData.endTime": { $gt: startTime }
+    });
+
+    // 2. If a collision is found, reject the request
+    if (overlappingBooking) {
+      return res.status(400).send({
+        success: false,
+        message: "Time slot collision: This item is already booked during this time range on this date."
+      });
+    }
+
+    // 3. No collision found, proceed to save the new booking
+    const senddata = await bookingsData.insertOne(req.body);
     res.send({ success: true, result: senddata });
+
   } catch (error) {
     console.error("Error creating booking:", error);
-    res.status(500).send({ message: "Failed to create booking", error });
+    res.status(500).send({ message: "Failed to create booking", error: error.message });
   }
 });
 
-// Also keep the old route alias so existing requests won't break
+
 app.post("/studionspace", async (req, res) => {
   try {
     const data = req.body;
