@@ -48,7 +48,6 @@ app.post("/bookings", async (req, res) => {
     const { title, bookingData, userData } = req.body;
     const { bookingDate, startTime, endTime } = bookingData;
 
-    // 1. Check for overlapping time slots for the same item/title on the same date
     const overlappingBooking = await bookingsData.findOne({
       title: title,
       "bookingData.bookingDate": bookingDate,
@@ -56,7 +55,7 @@ app.post("/bookings", async (req, res) => {
       "bookingData.endTime": { $gt: startTime }
     });
 
-    // 2. If a collision is found, reject the request
+
     if (overlappingBooking) {
       return res.status(400).send({
         success: false,
@@ -64,7 +63,7 @@ app.post("/bookings", async (req, res) => {
       });
     }
 
-    // 3. No collision found, proceed to save the new booking
+
     const senddata = await bookingsData.insertOne(req.body);
     res.send({ success: true, result: senddata });
 
