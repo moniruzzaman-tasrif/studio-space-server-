@@ -106,6 +106,29 @@ app.get("/studios/:id", async (req, res) => {
   }
 });
 
+app.get("/category/:id", async (req, res) => {
+  try {
+    const id = req.params.id;
+    console.log(id)
+    const query = { category:id };
+    const data = await StudioSpaceData.find(query).toArray(); 
+    res.send(data);
+  } catch (error) {
+    res.status(500).send({ message: "Failed to fetch studio", error });
+  }
+});
+
+// limit 6 item
+app.get("/featured",async(req,res)=>{
+try{
+  const limitData= await StudioSpaceData.find({}).limit(6).sort({hourlyRate:-1}).toArray()
+  res.send(limitData)
+
+}catch(eror){
+  res.status(500).send({ message: "Failed to fetch studios", error });
+}
+})
+
 app.get("/bookings/:email", async (req, res) => {
   try {
     const email = req.params.email;
