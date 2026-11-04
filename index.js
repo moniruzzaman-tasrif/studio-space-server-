@@ -106,6 +106,16 @@ app.get("/studios/:id", async (req, res) => {
   }
 });
 
+app.get("/bookings/:email", async (req, res) => {
+  try {
+    const email = req.params.email;
+    const getData = await bookingsData.find({ userEmail: email }).toArray();
+    res.send(getData);
+  } catch (error) {
+    console.error("Error fetching bookings:", error);
+    res.status(500).send({ message: "Failed to fetch bookings", error });
+  }
+});
 
 
 
@@ -125,7 +135,7 @@ app.delete("/studios/:id", async (req, res) => {
   }
 });
 
-app.patch("studios/:id",async(req,res)=>{
+app.patch("/studios/:id",async(req,res)=>{
   const id = req.params.id;
   const query = { _id: new ObjectId(id) };
   const update = { $set: req.body };
@@ -135,6 +145,31 @@ app.patch("studios/:id",async(req,res)=>{
   }
   res.send({ success: true, result: data });
 })
+
+app.patch("/bookings/:id", async (req, res) => {
+  try {
+    const id = req.params.id;
+const query = ObjectId.isValid(id)
+  ? { _id: new ObjectId(id) }
+  : { userEmail: id };
+
+    const updateData = req.body ;
+
+
+    const update = { $set: updateData };
+    const data = await bookingsData.updateOne(query, update);
+    console.log("Update result:", data);
+
+    if (data.matchedCount === 0) {
+      return res.status(404).send({ success: false, message: "Booking not found" });
+    }
+
+    res.send({ success: true, result: data });
+  } catch (error) {
+    console.error("Error updating booking:", error);
+    res.status(500).send({ success: false, message: "Failed to update booking", error: error.message });
+  }
+});
 
 app.get("/", (req, res) => {
   res.send("StudioSpace server is running");
