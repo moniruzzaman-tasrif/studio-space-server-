@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import { MongoClient, ObjectId } from "mongodb";
+import { createRemoteJWKSet, jwtVerify } from "jose";
 
 dotenv.config();
 
@@ -13,6 +14,8 @@ app.use(cors());
 app.use(express.json());
 
 const client = new MongoClient(process.env.MONGODB_URL);
+
+
 
 export async function connectToMongoDB() {
   try {
@@ -29,10 +32,30 @@ const db = database.db("StudioSpace");
 const bookingsData = db.collection("booking");
 const StudioSpaceData = db.collection("studios");
 
+const authUrl = process.env.AUTH_URL ;
+const JWKS = createRemoteJWKSet(new URL(`${authUrl}/api/auth/jwks`));
+
+const requireAuth = async (req, res, next) => {
+  const authHeader = req.headers.authorization
+
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).send({ message: "Unauthorized: Missing or invalid token", massage: "authorization" })
+  }
+
+  const token = authHeader.split(" ")[1]
+
+  try {
+    const { payload } = await jwtVerify(token, JWKS)
+    req.user = payload
+    next()
+  } catch (error) {
+    return res.status(401).send({ message: "Unauthorized", massage: "authorization" })
+  }
+}
 
 
 // Create studio
-app.post("/studios", async (req, res) => {
+app.post("/studios",requireAuth, async (req, res) => {
   try {
     const data = req.body;
     const senddata = await StudioSpaceData.insertOne(data);
@@ -43,7 +66,7 @@ app.post("/studios", async (req, res) => {
   }
 });
 
-app.post("/bookings", async (req, res) => {
+app.post("/bookings",requireAuth, async (req, res) => {
   try {
     const { title, bookingData, userData } = req.body;
     const { bookingDate, startTime, endTime } = bookingData;
@@ -74,7 +97,7 @@ app.post("/bookings", async (req, res) => {
 });
 
 
-app.post("/studionspace", async (req, res) => {
+app.post("/studionspace",requireAuth, async (req, res) => {
   try {
     const data = req.body;
     const senddata = await StudioSpaceData.insertOne(data);
@@ -86,7 +109,7 @@ app.post("/studionspace", async (req, res) => {
 });
 
 // Read all studios
-app.get("/studios", async (req, res) => {
+app.get("/studios",requireAuth, async (req, res) => {
   try {
     const data = await StudioSpaceData.find({}).toArray();
     res.send(data);
@@ -95,7 +118,7 @@ app.get("/studios", async (req, res) => {
   }
 });
 
-app.get("/studios/:id", async (req, res) => {
+app.get("/studios/:id",requireAuth, async (req, res) => {
   try {
     const id = req.params.id;
     const query = { _id: new ObjectId(id) };
@@ -106,7 +129,7 @@ app.get("/studios/:id", async (req, res) => {
   }
 });
 
-app.get("/category/:id", async (req, res) => {
+app.get("/category/:id",requireAuth, async (req, res) => {
   try {
     const id = req.params.id;
     console.log(id)
@@ -124,12 +147,12 @@ try{
   const limitData= await StudioSpaceData.find({}).limit(6).sort({hourlyRate:-1}).toArray()
   res.send(limitData)
 
-}catch(eror){
+}catch(error){
   res.status(500).send({ message: "Failed to fetch studios", error });
 }
 })
 
-app.get("/bookings/:email", async (req, res) => {
+app.get("/bookings/:email",requireAuth, async (req, res) => {
   try {
     const email = req.params.email;
     const getData = await bookingsData.find({ userEmail: email }).toArray();
@@ -142,7 +165,7 @@ app.get("/bookings/:email", async (req, res) => {
 
 
 
-app.delete("/studios/:id", async (req, res) => {
+app.delete("/studios/:id",requireAuth, async (req, res) => {
   try {
   const id = req.params.id;
     const query = { _id: new ObjectId(id) };
@@ -158,7 +181,7 @@ app.delete("/studios/:id", async (req, res) => {
   }
 });
 
-app.patch("/studios/:id",async(req,res)=>{
+app.patch("/studios/:id",requireAuth,async(req,res)=>{
   const id = req.params.id;
   const query = { _id: new ObjectId(id) };
   const update = { $set: req.body };
@@ -169,7 +192,7 @@ app.patch("/studios/:id",async(req,res)=>{
   res.send({ success: true, result: data });
 })
 
-app.patch("/bookings/:id", async (req, res) => {
+app.patch("/bookings/:id",requireAuth, async (req, res) => {
   try {
     const id = req.params.id;
 const query = ObjectId.isValid(id)
@@ -194,6 +217,11 @@ const query = ObjectId.isValid(id)
   }
 });
 
+// Route to test requireAuth
+app.get("/test-auth", requireAuth, (req, res) => {
+  res.send({ success: true, message: "Token is valid!", user: req.user });
+});
+
 app.get("/", (req, res) => {
   res.send("StudioSpace server is running");
 });
@@ -201,3 +229,6 @@ app.get("/", (req, res) => {
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
 });
+
+
+export default app
