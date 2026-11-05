@@ -31,7 +31,8 @@ const bookingsData = db.collection("booking");
 const StudioSpaceData = db.collection("studios");
 
 // JWKS for JWT authentication
-const authUrl = process.env.AUTH_URL || "http://localhost:3000";
+const rawAuthUrl = process.env.AUTH_URL || "http://localhost:3000";
+const authUrl = rawAuthUrl.replace(/\/+$/, "");
 const JWKS = createRemoteJWKSet(new URL(`${authUrl}/api/auth/jwks`));
 
 const requireAuth = async (req, res, next) => {
@@ -170,10 +171,10 @@ app.delete("/studios/:id", requireAuth, async (req, res) => {
 
 // ==================== BOOKINGS ROUTES ====================
 
-// Create booking (Protected)
-app.post("/bookings", requireAuth, async (req, res) => {
+// Create booking
+app.post("/bookings",requireAuth, async (req, res) => {
   try {
-    const { title, bookingData } = req.body;
+    const { title, bookingData, userData } = req.body;
     const { bookingDate, startTime, endTime } = bookingData || {};
 
     if (title && bookingDate && startTime && endTime) {
@@ -201,9 +202,15 @@ app.post("/bookings", requireAuth, async (req, res) => {
 });
 
 // Get user bookings by email (Protected)
-app.get("/bookings/:email", requireAuth, async (req, res) => {
+app.get("/bookings/:email",requireAuth, async (req, res) => {
   try {
-    const email = req.params.email;
+    let email;
+    try {
+      email = decodeURIComponent(req.params.email).trim();
+    } catch {
+      return res.status(400).send({ message: "Invalid email path encoding" });
+    }
+
     const query = {
       $or: [
         { userEmail: email },
