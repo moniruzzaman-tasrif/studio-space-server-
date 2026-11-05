@@ -46,20 +46,7 @@ cd StudioSpace_Server
 npm install
 ```
 
-### 3. Environment Variables Setup
-Create a `.env` file in the root directory:
-
-```env
-PORT=5000
-MONGODB_URL=your_mongodb_atlas_connection_string
-AUTH_URL=http://localhost:3000
-```
-
-> **Note:**
-> - `MONGODB_URL`: Your MongoDB Atlas connection URI with read/write access.
-> - `AUTH_URL`: The URL of your Next.js client running Better Auth (used by `requireAuth` to fetch JWKS keys).
-
-### 4. Start the Server
+### 3. Start the Server
 ```bash
 # Start server
 npm start
